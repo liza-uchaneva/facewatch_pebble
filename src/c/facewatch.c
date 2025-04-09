@@ -1,29 +1,21 @@
-#include <pebble.h>
 #include <math.h>
+#include <pebble.h>
 
 static Window *s_window;
 static GBitmap *s_bitmap;
 static Layer *s_canvas_layer;
 
 GPoint screencenter;
-
-#define MINUTE_HAND_LENGTH 40
+#define M_PI 3.14159265358979323846264338327950288
+#define MINUTE_HAND_LENGTH 50
 #define HOUR_HAND_LENGTH 46
 
-float angle(const int value, const int max)
+static double fractionToRadiant(double fraction)
 {
-  if(value == 0 || value == max)
-    return 0;
-  return TRIG_MAX_ANGLE * value / max;
+  return fraction * 2 * M_PI;
 }
 
-float hour_angle(const tm * const time)
-{
-  const int hour = time->tm_hour % 12;
-  return angle(hour * 50 /60, 600);
-}
-
-static void update_hand(GContext *ctx, const int angle, int length)
+static void update_hand(GContext *ctx, const double angle, int length)
 {
   //Find start point
   int x1 =  screencenter.x + sin(angle) * 15;
@@ -43,22 +35,26 @@ static void update_hand(GContext *ctx, const int angle, int length)
   graphics_draw_line(ctx, start, end);
 }
 
-static void update_time(GContext *ctx)
+static void update_time(struct Layer *layer, GContext *ctx)
 {
   // Get a tm structure
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
 
-  //Update hour hand
-  float hourAngle = hour_angle(tick_time);
-  update_hand(ctx, hourAngle, HOUR_HAND_LENGTH);
-
   //Update min hand
-  float minAngle = angle(tick_time->tm_min, 60);
-  update_hand(ctx, minAngle, MINUTE_HAND_LENGTH);
+  int minute = tick_time->tm_min;
+  double minuteFraction =  (double)minute / 60;
+  double minuteAngle = fractionToRadiant(minuteFraction);
+  update_hand(ctx, minuteAngle, MINUTE_HAND_LENGTH);
+
+  //Update hour hand
+  int hour = tick_time->tm_hour; 
+  double hourFraction = (hour % 12 + minuteFraction) / 12;
+  double hourAngle = fractionToRadiant(hourFraction);
+  update_hand(ctx, hourAngle, HOUR_HAND_LENGTH);
 }
 
-static void tick_handler() 
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) 
 {
   layer_mark_dirty(s_canvas_layer);
 }
@@ -91,7 +87,6 @@ static void prv_init(void) {
   window_stack_push(s_window, animated);
   
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-  update_time();
 }
 
 static void prv_deinit(void) {
