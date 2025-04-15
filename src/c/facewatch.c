@@ -6,26 +6,47 @@ static GBitmap *s_bitmap;
 static Layer *s_canvas_layer;
 
 GPoint screencenter;
-#define M_PI 3.14159265358979323846264338327950288
-#define MINUTE_HAND_LENGTH 50
-#define HOUR_HAND_LENGTH 46
+#define MINUTE_HAND_LENGTH 48
+#define HOUR_HAND_LENGTH 40
 
-static double fractionToRadiant(double fraction)
-{
-  return fraction * 2 * M_PI;
+float angle(const int value, const int max){
+  if(value == 0 || value == max)
+    return 0;
+  return TRIG_MAX_ANGLE * value / max;
 }
 
-static void update_hand(GContext *ctx, const double angle, int length)
-{
-  //Find start point
-  int x1 =  screencenter.x + sin(angle) * 15;
-  int y1 = screencenter.y - cos(angle) * 15;
-  GPoint start = GPoint(x1,y1);
+GPoint gpoint_on_circle(const int angle, const int radius){
+  const int diameter = radius * 2;
+  const GRect grect_for_polar = GRect(screencenter.x - radius + 1, screencenter.y - radius + 1, diameter, diameter);
+  return gpoint_from_polar(grect_for_polar, GOvalScaleModeFitCircle, angle);
+}
 
+static void update_hour_hand(Layer *layer, GContext *ctx, const tm * const time)
+{
+  const int hour = time->tm_hour % 12;
+  float ang = angle(hour * 50 + time->tm_min * 50 / 60, 600);
+
+  //Find start point
+  GPoint start = gpoint_on_circle(ang, 15);
   //Find end point
-  int x2 =  screencenter.x + sin(angle) * length;
-  int y2 = screencenter.y - cos(angle) * length;
-  GPoint end = GPoint(x2,y2);
+  const GPoint end = gpoint_on_circle(ang, HOUR_HAND_LENGTH);
+
+  //Set color
+  graphics_context_set_stroke_color(ctx, GColorRed);
+  // Set width
+  graphics_context_set_stroke_width(ctx, 5);
+  //Draw a line
+  graphics_draw_line(ctx, start, end);
+}
+
+static void update_minute_hand(Layer *layer, GContext *ctx, int minutes)
+{
+  float ang = angle(minutes, 60);
+
+  //Find start point
+  GPoint start = gpoint_on_circle(ang, 15);
+  //Find end point
+  const GPoint end = gpoint_on_circle(ang, MINUTE_HAND_LENGTH);
 
   //Set color
   graphics_context_set_stroke_color(ctx, GColorRed);
@@ -43,15 +64,10 @@ static void update_time(struct Layer *layer, GContext *ctx)
 
   //Update min hand
   int minute = tick_time->tm_min;
-  double minuteFraction =  (double)minute / 60;
-  double minuteAngle = fractionToRadiant(minuteFraction);
-  update_hand(ctx, minuteAngle, MINUTE_HAND_LENGTH);
+  update_minute_hand(layer, ctx, minute);
 
   //Update hour hand
-  int hour = tick_time->tm_hour; 
-  double hourFraction = (hour % 12 + minuteFraction) / 12;
-  double hourAngle = fractionToRadiant(hourFraction);
-  update_hand(ctx, hourAngle, HOUR_HAND_LENGTH);
+  update_hour_hand(layer, ctx, tick_time);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) 
