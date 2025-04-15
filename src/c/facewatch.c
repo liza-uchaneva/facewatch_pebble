@@ -21,32 +21,12 @@ GPoint gpoint_on_circle(const int angle, const int radius){
   return gpoint_from_polar(grect_for_polar, GOvalScaleModeFitCircle, angle);
 }
 
-static void update_hour_hand(Layer *layer, GContext *ctx, const tm * const time)
+static void draw_hand(Layer *layer, GContext *ctx, int length, float angle)
 {
-  const int hour = time->tm_hour % 12;
-  float ang = angle(hour * 50 + time->tm_min * 50 / 60, 600);
-
-  //Find start point
-  GPoint start = gpoint_on_circle(ang, 15);
+   //Find start point
+  const GPoint start = gpoint_on_circle(angle, 15);
   //Find end point
-  const GPoint end = gpoint_on_circle(ang, HOUR_HAND_LENGTH);
-
-  //Set color
-  graphics_context_set_stroke_color(ctx, GColorRed);
-  // Set width
-  graphics_context_set_stroke_width(ctx, 5);
-  //Draw a line
-  graphics_draw_line(ctx, start, end);
-}
-
-static void update_minute_hand(Layer *layer, GContext *ctx, int minutes)
-{
-  float ang = angle(minutes, 60);
-
-  //Find start point
-  GPoint start = gpoint_on_circle(ang, 15);
-  //Find end point
-  const GPoint end = gpoint_on_circle(ang, MINUTE_HAND_LENGTH);
+  const GPoint end = gpoint_on_circle(angle, length);
 
   //Set color
   graphics_context_set_stroke_color(ctx, GColorRed);
@@ -63,11 +43,13 @@ static void update_time(struct Layer *layer, GContext *ctx)
   struct tm *tick_time = localtime(&temp);
 
   //Update min hand
-  int minute = tick_time->tm_min;
-  update_minute_hand(layer, ctx, minute);
+  int minutes = tick_time->tm_min;
+  draw_hand(layer, ctx, MINUTE_HAND_LENGTH, angle(minutes, 60));
 
   //Update hour hand
-  update_hour_hand(layer, ctx, tick_time);
+  const int hour = tick_time->tm_hour % 12;
+  float ang = angle(hour * 50 + minutes * 50 / 60, 600);
+  draw_hand(layer, ctx, HOUR_HAND_LENGTH, ang);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) 
@@ -78,7 +60,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 static void prv_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
-
+  // Create canvas layer
   s_canvas_layer = layer_create(bounds);
   screencenter = GPoint(bounds.size.w/2, bounds.size.h/2);
 
