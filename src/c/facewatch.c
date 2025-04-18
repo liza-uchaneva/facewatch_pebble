@@ -6,13 +6,13 @@ static GBitmap *s_bitmap;
 static Layer *s_canvas_layer;
 
 GPoint screencenter;
-#define MINUTE_HAND_LENGTH 50
-#define HOUR_HAND_LENGTH 42
+#define MINUTE_HAND_LENGTH 55
+#define HOUR_HAND_LENGTH 45
 
-#define COLOR_CORAL GColorFromHEX(0xEE6352) //cheeck, minute hand, outer line in eyeball
-#define COLOR_YELLOW GColorFromHEX(0xFFE156) //eye ball, brows, hour hand
-#define COLOR_FROSTED_BLUE GColorFromHEX(0xA4BCCC) //shadows and eye backgrownd
-#define COLOR_DARK_GRAY GColorFromHEX(0x454851) //nose, mouth eyelids, lushes
+#define COLOR_CORAL GColorFromHEX(0xFF3B1F)
+#define COLOR_YELLOW GColorFromHEX(0xFFA500)
+#define COLOR_FROSTED_BLUE GColorFromHEX(0x7CAAC8)
+#define COLOR_DARK_GRAY GColorFromHEX(0x2C2E33)
 
 float angle(const int value, const int max){
   if(value == 0 || value == max)
@@ -33,28 +33,36 @@ static void draw_hand(Layer *layer, GContext *ctx, int length, float angle, GCol
   //Find end point
   const GPoint end = gpoint_on_circle(angle, length);
 
-  // //Draw shadow
-  //Set color
+  //Draw shadow
+  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+  graphics_context_set_stroke_width(ctx, 9);
+  graphics_draw_line(ctx, start, end);
+
+  //Draw a inner line
   graphics_context_set_stroke_color(ctx, color);
-  // Set width
   graphics_context_set_stroke_width(ctx, 5);
-  //Draw a line
   graphics_draw_line(ctx, start, end);
 }
 
 static void draw_nose(Layer *layer, GContext *ctx, int size)
 {
-  //Set color
+  GPoint shadow_blue_center = GPoint(screencenter.x + 1, screencenter.y + 3);
+  graphics_context_set_stroke_width(ctx, 5);
+  graphics_context_set_stroke_color(ctx, COLOR_FROSTED_BLUE);
+  graphics_draw_circle(ctx, shadow_blue_center, size);
+
+  GPoint shadow_red_center = GPoint(screencenter.x + 2, screencenter.y - 2);
+  graphics_context_set_stroke_color(ctx, COLOR_CORAL);
+  graphics_draw_circle(ctx, shadow_red_center, size);
+
   graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
   graphics_draw_circle(ctx, screencenter, size);
 }
 
-static void draw_eye_side(Layer *layer, GContext *ctx, int side)
+static void draw_eye(Layer *layer, GContext *ctx, int side)
 {
   // Calculate base x depending on side (-1 for left, 1 for right)
   int base_x = screencenter.x + side * (screencenter.x / 2 - 1);
-
-  // Base Y remains the same
   int base_y = screencenter.y - screencenter.y / 4 + 1;
 
   // Draw eye background
@@ -78,46 +86,56 @@ static void draw_eye_side(Layer *layer, GContext *ctx, int side)
   graphics_draw_arc(ctx, eye_rect, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
 
   // Bottom eyelid line
-  GPoint start = GPoint(base_x - 10, base_y);
-  GPoint end   = GPoint(base_x - 20, base_y);
+  GPoint start = GPoint(base_x + 10 * side, base_y);
+  GPoint end   = GPoint(base_x + 19 * side, base_y);
   graphics_draw_line(ctx, start, end);
 }
 
-// static void draw_eye(Layer *layer, GContext *ctx)
-// {
-//   const GRect grect_first_eye = GRect(screencenter.x - screencenter.x / 2 + 1 - 20,
-//                                 screencenter.y - screencenter.y / 4 + 1 - 20,
-//                                 40, 40);
-//   // Draw left eye background
-//   graphics_context_set_fill_color(ctx, COLOR_FROSTED_BLUE);
-//   graphics_fill_radial(ctx, grect_first_eye, GOvalScaleModeFitCircle, 30, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
-  
-//   // Draw eye ball
-//   const GRect grect_eyeball_outer = GRect(screencenter.x - screencenter.x / 2 + 1 - 17,
-//                                 screencenter.y - screencenter.y / 4 + 1 - 37,
-//                                 35, 35);
-//   graphics_context_set_fill_color(ctx, COLOR_CORAL);
-//   graphics_fill_radial(ctx, grect_eyeball_outer, GOvalScaleModeFitCircle, 30, DEG_TO_TRIGANGLE(-255), DEG_TO_TRIGANGLE(-115));
-  
-//   //Inner eyeball
-//   const GRect grect_eyeball_inner = GRect(screencenter.x - screencenter.x / 2 + 1 - 13,
-//                                 screencenter.y - screencenter.y / 4 + 1 - 33,
-//                                 27, 27);
-//   graphics_context_set_fill_color(ctx, COLOR_YELLOW);
-//   graphics_fill_radial(ctx, grect_eyeball_inner, GOvalScaleModeFitCircle, 30, DEG_TO_TRIGANGLE(-255), DEG_TO_TRIGANGLE(-115));
-  
-//   //Draw left upper eyelid
-//   graphics_context_set_stroke_width(ctx, 6);
-//   graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
-//   graphics_draw_arc(ctx, grect_first_eye, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
+static void draw_cheek(Layer *layer, GContext *ctx, int side)
+{
+  // Calculate cheek position based on side (-1 for left, 1 for right)
+  int offset_x = side * (screencenter.x / 2 + (side == -1 ? 18 : -14));
+  GPoint point = GPoint(screencenter.x + offset_x, screencenter.y - 10);
 
-//   // Draw left bottom eyelid
-//   GPoint start = GPoint(screencenter.x - screencenter.x / 2 + 1 -10, 
-//                      screencenter.y - screencenter.y / 4 + 1);
-//   GPoint end = GPoint(screencenter.x - screencenter.x / 2 + 1 - 20, 
-//                      screencenter.y - screencenter.y / 4 + 1);
-//   graphics_draw_line(ctx, start, end);
-// }
+  GRect grect_cheek = GRect(point.x, point.y, 35, 25);
+  graphics_context_set_fill_color(ctx, COLOR_CORAL);
+  graphics_fill_rect(ctx, grect_cheek, 20, GCornersAll);
+}
+
+static void draw_brow(Layer *layer, GContext *ctx, int side)
+{
+  // side: -1 for left, 1 for right
+  int base_x = screencenter.x + side * (screencenter.x / 2 + (side == -1 ? 0 : -4));
+  int base_y = screencenter.y - screencenter.y / 4 + 1;
+
+  GRect brow_rect = GRect(base_x - 20, base_y - 35, 45, 45);
+
+  graphics_context_set_stroke_width(ctx, 10);
+  graphics_context_set_stroke_color(ctx, COLOR_YELLOW);
+
+  // Mirror angles: right brow uses reversed arc to look symmetrical
+  if (side == -1) {
+    graphics_draw_arc(ctx, brow_rect, GOvalScaleModeFitCircle,
+                      DEG_TO_TRIGANGLE(40), DEG_TO_TRIGANGLE(60));
+  } else {
+    graphics_draw_arc(ctx, brow_rect, GOvalScaleModeFitCircle,
+                      DEG_TO_TRIGANGLE(-60), DEG_TO_TRIGANGLE(-40));
+  }
+}
+
+static void draw_mouth(Layer *layer, GContext *ctx)
+{
+  GRect grect_mouth = GRect(screencenter.x - 24, screencenter.y - 15, 50, 50);
+  graphics_context_set_stroke_width(ctx, 6);
+  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+  graphics_draw_arc(ctx, grect_mouth, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-230), DEG_TO_TRIGANGLE(-130));
+
+  GRect grect_mouth_shadow = GRect(screencenter.x - 30, screencenter.y - 18, 65, 65);
+  graphics_context_set_stroke_width(ctx, 6);
+  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+  graphics_draw_arc(ctx, grect_mouth_shadow, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-185), DEG_TO_TRIGANGLE(-170));
+
+}
 
 static void canvas_update_proc(struct Layer *layer, GContext *ctx)
 {
@@ -125,9 +143,20 @@ static void canvas_update_proc(struct Layer *layer, GContext *ctx)
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
 
-  //Draw eyes
-  draw_eye_side(layer, ctx, -1);
-  draw_eye_side(layer, ctx, 1);
+  // //Draw eyes
+  draw_eye(layer, ctx, -1);
+  draw_eye(layer, ctx, 1);
+
+  //Draw cheeks
+  draw_cheek(layer, ctx, -1);
+  draw_cheek(layer, ctx, 1);
+
+  //Draw brows
+  draw_brow(layer, ctx, -1);
+  draw_brow(layer, ctx, 1);
+
+  //Draw mouth
+  draw_mouth(layer, ctx);
 
   //Draw min hand
   int minutes = tick_time->tm_min;
@@ -139,7 +168,7 @@ static void canvas_update_proc(struct Layer *layer, GContext *ctx)
   draw_hand(layer, ctx, HOUR_HAND_LENGTH, ang, COLOR_YELLOW);
 
   //Draw nose
-  draw_nose(layer, ctx, 8);
+  draw_nose(layer, ctx, 10);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) 
