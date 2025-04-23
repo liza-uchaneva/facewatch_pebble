@@ -9,6 +9,20 @@ static Layer *s_battery_layer;
 // Battery state
 static int s_battery_level = 100;
 static bool s_is_charging = false;
+static AppTimer *s_animation_timer;
+
+// Eyes animations stats
+static bool s_is_blinking = false;
+static int s_blink_timer = 0;
+
+static float s_smile_phase = 0;  // 0 = neutral, 1 = full smile
+static bool s_is_smile_animating = false;
+static int s_smile_timer = 0;
+
+// Update frequency
+#define ANIMATION_INTERVAL 50
+#define ANIMATION_INTERVAL_LOW_POWER 100  // Slower updates when battery is low
+#define LOW_BATTERY_THRESHOLD 20  // Consider battery low at 20%
 
 GPoint screencenter;
 #define MINUTE_HAND_LENGTH 55
@@ -58,6 +72,22 @@ static void draw_eye(Layer *layer, GContext *ctx, int side) {
   int base_x = screencenter.x + side * (screencenter.x / 2 - 1);
   int base_y = screencenter.y - screencenter.y / 4 + 1;
 
+  if(s_is_smile_animating)
+  {
+    GRect eye_bg = GRect(base_x - 20, base_y - 20, 40, 40);
+    graphics_context_set_stroke_width(ctx, 6);
+    graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+    graphics_draw_arc(ctx, eye_bg, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
+    return;
+  }
+
+  if (s_is_blinking) {
+  graphics_context_set_stroke_width(ctx, 6);
+  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+  graphics_draw_line(ctx, GPoint(base_x - 15, base_y), GPoint(base_x + 15, base_y));
+  return;
+  }
+  
   GRect eye_bg = GRect(base_x - 20, base_y - 20, 40, 40);
   graphics_context_set_fill_color(ctx, COLOR_FROSTED_BLUE);
   graphics_fill_radial(ctx, eye_bg, GOvalScaleModeFitCircle, 30, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
@@ -86,33 +116,82 @@ static void draw_cheek(Layer *layer, GContext *ctx, int side) {
 static void draw_brow(Layer *layer, GContext *ctx, int side) {
   int base_x = screencenter.x + side * (screencenter.x / 2 + (side == -1 ? 0 : -4));
   int base_y = screencenter.y - screencenter.y / 4 + 1;
-  GRect brow_rect = GRect(base_x - 20, base_y - 35, 45, 45);
 
+  int normal_start = (side == -1) ? 40 : -60;
+  int normal_end   = (side == -1) ? 60 : -40;
+
+  int smile_start  = (side == -1) ? -30 : 10;
+  int smile_end    = (side == -1) ? -10 : 30;
+
+  int start_angle = normal_start + (int)((smile_start - normal_start) * s_smile_phase);
+  int end_angle   = normal_end + (int)((smile_end - normal_end) * s_smile_phase);
+
+  GRect brow_rect = GRect(base_x - 20, base_y - 35, 45, 45);
   graphics_context_set_stroke_width(ctx, 10);
   graphics_context_set_stroke_color(ctx, COLOR_YELLOW);
-
   graphics_draw_arc(ctx, brow_rect, GOvalScaleModeFitCircle,
-    side == -1 ? DEG_TO_TRIGANGLE(40) : DEG_TO_TRIGANGLE(-60),
-    side == -1 ? DEG_TO_TRIGANGLE(60) : DEG_TO_TRIGANGLE(-40));
+                    DEG_TO_TRIGANGLE(start_angle), DEG_TO_TRIGANGLE(end_angle));
 }
 
 static void draw_mouth(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_width(ctx, 6);
   graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
 
-  graphics_draw_arc(ctx, GRect(screencenter.x - 24, screencenter.y - 15, 50, 50),
-                    GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-230), DEG_TO_TRIGANGLE(-130));
+  float smile = s_smile_phase;
 
-  graphics_draw_arc(ctx, GRect(screencenter.x - 30, screencenter.y - 18, 65, 65),
-                    GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(-185), DEG_TO_TRIGANGLE(-170));
+  // Interpolate mouth arc angles
+  int start_angle = -230 + (int)(-20 * smile);  // goes to -240
+  int end_angle   = -130 - (int)(-20 * smile);  // goes to -120
+
+  graphics_draw_arc(ctx, GRect(screencenter.x - 24, screencenter.y - 15 - (int)(3 * smile), 50, 50),
+                    GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(start_angle), DEG_TO_TRIGANGLE(end_angle));
+
+  int top_start = -185;
+  int top_end = -170;
+  graphics_draw_arc(ctx, GRect(screencenter.x - 30, screencenter.y - 18 - (int)(3 * smile), 65, 65),
+                    GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(top_start), DEG_TO_TRIGANGLE(top_end));
+}
+
+static void animation_update() {
+  // // Blinking logic
+  // s_blink_timer++;
+  // if (s_blink_timer >= 368) { // blink every ~15 seconds
+  //   s_blink_timer = 0;
+  //   s_is_blinking = true;
+  // } else if (s_blink_timer == 3) {
+  //   s_is_blinking = false;
+  // }
+
+  s_smile_timer++;
+  if (s_smile_timer >= 360) {
+    s_smile_timer = 0;
+    s_is_smile_animating = true;
+  }
+
+  // Smile animation phase control
+  if (s_is_smile_animating) {
+    s_smile_phase += 0.02f; // Speed of smile
+    if (s_smile_phase >= 1.0f) {
+      s_smile_phase = 1.0f;
+      s_is_smile_animating = false;
+    }
+  } else {
+    if (s_smile_phase > 0) {
+      s_smile_phase -= 0.05f;
+      if (s_smile_phase < 0) s_smile_phase = 0;
+    }
+  }
+
+  // Redraw the canvas with updated animation values
+  layer_mark_dirty(s_canvas_layer);
 }
 
 static void battery_update_proc(Layer *layer, GContext *ctx) {
   BatteryChargeState charge_state = battery_state_service_peek();
 
   // Battery style constants
-  const int BATTERY_WIDTH = 20;
-  const int BATTERY_HEIGHT = 8;
+  const int BATTERY_WIDTH = 22;
+  const int BATTERY_HEIGHT = 10;
   const int BATTERY_CAP_WIDTH = 2;
   
   GRect bounds = layer_get_bounds(layer);
@@ -121,7 +200,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
 
   // Battery body
   GRect battery_body = GRect(origin.x, origin.y, BATTERY_WIDTH, BATTERY_HEIGHT);
-  graphics_context_set_stroke_color(ctx, COLOR_CORAL);
+  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
   graphics_draw_rect(ctx, battery_body);
 
   // Battery cap (optional for aesthetics)
@@ -131,11 +210,10 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   // Fill level
   int fill_width = (charge_state.charge_percent * BATTERY_WIDTH) / 100;
   GRect fill_rect = GRect(origin.x, origin.y, fill_width, BATTERY_HEIGHT);
-  graphics_context_set_fill_color(ctx, COLOR_CORAL);
+  graphics_context_set_fill_color(ctx, COLOR_DARK_GRAY);
   graphics_fill_rect(ctx, fill_rect, 0, GCornerNone);
 }
 
-// Battery state handler
 static void battery_callback(BatteryChargeState charge_state) {
     s_battery_level = charge_state.charge_percent;
     s_is_charging = charge_state.is_charging;
@@ -170,6 +248,25 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(s_canvas_layer);
 }
 
+// Animation timer callback
+static void animation_timer_callback(void *data) {
+    // First update the animation
+    animation_update();
+    
+    // Determine next interval based on battery level
+    uint32_t next_interval = (s_battery_level <= LOW_BATTERY_THRESHOLD && !s_is_charging) ? 
+                             ANIMATION_INTERVAL_LOW_POWER : ANIMATION_INTERVAL;
+    
+    // Simply register the next timer - no complex retry logic needed
+    s_animation_timer = app_timer_register(next_interval, animation_timer_callback, NULL);
+    
+    // If for some reason the timer couldn't be registered, try one more time with a fallback interval
+    if (!s_animation_timer) {
+        APP_LOG(APP_LOG_LEVEL_WARNING, "Failed to register animation timer, retrying");
+        s_animation_timer = app_timer_register(ANIMATION_INTERVAL * 2, animation_timer_callback, NULL);
+    }
+}
+
 static void prv_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
@@ -184,12 +281,11 @@ static void prv_window_load(Window *window) {
   layer_set_update_proc(s_canvas_layer, canvas_update_proc);
   layer_add_child(window_layer, s_canvas_layer);
 
-// Create battery layer
   GRect battery_frame;
   battery_frame.origin.x = bounds.size.w - 25;
   battery_frame.origin.y = 5;
-  battery_frame.size.w = 20;
-  battery_frame.size.h = 8;
+  battery_frame.size.w = 22;
+  battery_frame.size.h = 10;
   s_battery_layer = layer_create(battery_frame);
   if (!s_battery_layer) {
       APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to create battery layer");
@@ -200,9 +296,22 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, s_battery_layer);
 
   layer_mark_dirty(s_canvas_layer);
+
+  // Start animation timer with error checking
+    s_animation_timer = app_timer_register(ANIMATION_INTERVAL, animation_timer_callback, NULL);
+    if (!s_animation_timer) {
+        // If timer creation fails, try again with longer interval
+        s_animation_timer = app_timer_register(ANIMATION_INTERVAL * 2, animation_timer_callback, NULL);
+    }
 }
 
 static void prv_window_unload(Window *window) {
+  // Cancel the animation timer if it exists
+    if (s_animation_timer) {
+        app_timer_cancel(s_animation_timer);
+        s_animation_timer = NULL;
+    }
+
   layer_destroy(s_canvas_layer);
   gbitmap_destroy(s_bitmap);
   if (s_battery_layer) {
@@ -212,6 +321,8 @@ static void prv_window_unload(Window *window) {
 }
 
 static void prv_init(void) {
+  s_animation_timer = NULL;
+
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .load = prv_window_load,
@@ -222,12 +333,18 @@ static void prv_init(void) {
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   battery_state_service_subscribe(battery_callback);  // Use callback function
     
-    // Get initial battery state
+  // Get initial battery state
   s_battery_level = battery_state_service_peek().charge_percent;
   s_is_charging = battery_state_service_peek().is_charging;
 }
 
 static void prv_deinit(void) {
+  // Cancel the animation timer if it exists
+    if (s_animation_timer) {
+        app_timer_cancel(s_animation_timer);
+        s_animation_timer = NULL;
+    }
+
   window_destroy(s_window);
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
