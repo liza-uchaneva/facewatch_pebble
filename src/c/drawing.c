@@ -1,5 +1,6 @@
 #include "c/geometry.h"
 #include "c/consts.h"
+#include "c/drawing.h"
 
 #include <pebble.h>
 

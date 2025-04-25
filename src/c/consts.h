@@ -1,15 +1,5 @@
 #include <pebble.h>
 
-// Eyes animations stats
-static bool s_is_blinking = false;
-static int s_blink_timer = 0;
-
-static float s_smile_phase = 0;  // 0 = neutral, 1 = full smile
-static bool s_is_smile_animating = false;
-static int s_smile_timer = 0;
-static int s_smile_hold_timer = 0;
-
-// Update frequency
 #define ANIMATION_INTERVAL 50
 #define ANIMATION_INTERVAL_LOW_POWER 100  // Slower updates when battery is low
 #define LOW_BATTERY_THRESHOLD 20  // Consider battery low at 20%
