@@ -1,8 +1,7 @@
 #include <pebble.h>
 
-#define ANIMATION_INTERVAL 50
-#define ANIMATION_INTERVAL_LOW_POWER 100  // Slower updates when battery is low
-#define LOW_BATTERY_THRESHOLD 20  // Consider battery low at 20%
+#define ANIMATION_DURATION 50
+#define ANIMATION_DELAY 100 
 
 #define MINUTE_HAND_LENGTH 55
 #define HOUR_HAND_LENGTH 45

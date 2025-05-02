@@ -46,10 +46,10 @@ static void draw_eye(GContext *ctx, int side) {
   }
 
   if (s_is_blinking) {
-  graphics_context_set_stroke_width(ctx, 6);
-  graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
-  graphics_draw_line(ctx, GPoint(base_x - 15, base_y), GPoint(base_x + 15, base_y));
-  return;
+    graphics_context_set_stroke_width(ctx, 6);
+    graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
+    graphics_draw_line(ctx, GPoint(base_x - 15, base_y), GPoint(base_x + 15, base_y));
+    return;
   }
   
   GRect eye_bg = GRect(base_x - 20, base_y - 20, 40, 40);
@@ -146,7 +146,7 @@ static void draw_lush(GContext *ctx, int side) {
   }
 }
 
-void draw_face_layer(GContext *ctx, GPoint center, struct tm *tick_time){
+void draw_face_layer(GContext *ctx, GPoint center){
   screencenter = center;
 
   draw_eye(ctx, -1);
@@ -163,7 +163,10 @@ void draw_face_layer(GContext *ctx, GPoint center, struct tm *tick_time){
 
   draw_mouth(ctx);
   draw_nose(ctx, 10);
+}
 
+void draw_hands_layer(GContext *ctx, GPoint center, struct tm *tick_time)
+{
   draw_hand(ctx, MINUTE_HAND_LENGTH, calculate_angle(tick_time->tm_min, 60), COLOR_CORAL);
   draw_hand(ctx, HOUR_HAND_LENGTH, calculate_angle((tick_time->tm_hour % 12) * 50 + tick_time->tm_min * 50 / 60, 600), COLOR_YELLOW);
 }

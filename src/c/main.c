@@ -3,66 +3,24 @@
 
 static Window *s_window;
 static Layer *s_canvas_layer;
+static Layer *s_hands_layer;
 static Layer *s_battery_layer;
 
 // Battery state
 static int s_battery_level = 100;
 bool s_is_charging = false;
 
-static AppTimer *s_animation_timer;
-
 // Blink animation
-static int s_blink_timer = 0;
 bool s_is_blinking = false;
+static AppTimer *s_blink_animation_timer;
 
 // Smile animation
 bool s_is_smile_animating = false;
+bool is_smile_increacing = true;
 float s_smile_phase = 0;
-static int s_smile_timer = 0;
-static int s_smile_hold_timer = 0;
+static AppTimer *s_smile_animation_timer;
 
 GPoint screencenter;
-
-static void animation_update() {
-  s_blink_timer++;
-  if (s_blink_timer >= 728 && !s_is_smile_animating) { // blink every ~15 seconds
-    s_blink_timer = 0;
-    s_is_blinking = true;
-  } else if (s_blink_timer == 3) {
-    s_is_blinking = false;
-  }
-  // Smile logic
-  s_smile_timer++;
-  if (s_smile_timer >= 7200) {
-    s_smile_timer = 0;
-    s_is_smile_animating = true;
-  }
-
-  // Smile animation phase control
-  if (s_is_smile_animating) {
-    if(s_smile_phase < 1.0f)
-    {
-      s_smile_phase += 0.05f;
-      if(s_smile_phase == 1.0f) 
-      {
-        s_smile_phase = 1.0f;
-        s_is_smile_animating = false;
-      }
-    }
-    else{
-       s_smile_hold_timer++;
-      if (s_smile_hold_timer >= 100) {
-        s_is_smile_animating = false; // Start un-smiling
-      }
-    }
-  } else {
-    if (s_smile_phase > 0) {
-      s_smile_phase -= 0.05f;
-      if (s_smile_phase < 0) s_smile_phase = 0;
-    }
-  }
-  layer_mark_dirty(s_canvas_layer);
-}
 
 static void battery_update_proc(Layer *layer, GContext *ctx) {
   BatteryChargeState charge_state = battery_state_service_peek();
@@ -111,20 +69,73 @@ static void battery_callback(BatteryChargeState charge_state) {
 }
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
+  draw_face_layer(ctx, screencenter);
+}
+
+static void hands_update_proc(Layer *layer, GContext *ctx)
+{
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
 
-  draw_face_layer(ctx, screencenter, tick_time);
+  draw_hands_layer(ctx, screencenter, tick_time);
 }
 
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+static void blink_animation_timer_callback(void *data) {
+  if(!s_is_smile_animating && !s_is_blinking)
+  {
+    s_is_blinking = true;
+    psleep(100);
+    s_blink_animation_timer = app_timer_register(100, blink_animation_timer_callback, NULL);
+  }
+  else{
+    s_is_blinking = false;
+  }
   layer_mark_dirty(s_canvas_layer);
 }
 
-static void animation_timer_callback(void *data) {
-    animation_update();
-    
 
+static void smiling_animation_timer_callback(void *data) {
+  if(s_is_smile_animating)
+  {
+    if(is_smile_increacing)
+    {
+      s_smile_phase += 0.05;
+      APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase is increasing");
+      if(s_smile_phase >= 1.0)
+      {
+        APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase on hold");
+        psleep(10000);
+        is_smile_increacing = false;
+      }
+        s_smile_animation_timer = app_timer_register(100, smiling_animation_timer_callback, NULL);
+    }
+    else{
+      s_smile_phase -= 0.05;
+      APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase decreasing");
+      if(s_smile_phase <= 0.0)
+      {
+        APP_LOG(APP_LOG_LEVEL_DEBUG,"smile is ended");
+        s_is_smile_animating = false;
+        is_smile_increacing = true;
+        s_smile_phase = 0.0;
+        s_smile_animation_timer = app_timer_register(72000, smiling_animation_timer_callback, NULL);
+      }
+      else{
+      s_smile_animation_timer = app_timer_register(100, smiling_animation_timer_callback, NULL);
+      }
+    }
+  }
+  else{
+    s_is_smile_animating = true;
+    APP_LOG(APP_LOG_LEVEL_DEBUG,"smile is started");
+    s_smile_animation_timer = app_timer_register(10, smiling_animation_timer_callback, NULL);
+  }
+
+  layer_mark_dirty(s_canvas_layer);
+}
+
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  layer_mark_dirty(s_hands_layer);
 }
 
 static void prv_window_load(Window *window) {
@@ -132,47 +143,41 @@ static void prv_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
   screencenter = GPoint(bounds.size.w / 2, bounds.size.h / 2);
 
+  // Face layer
   s_canvas_layer = layer_create(bounds);
-  if (!s_canvas_layer) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to create canvas layer");
-    return;
-  }
-
   layer_set_update_proc(s_canvas_layer, canvas_update_proc);
   layer_add_child(window_layer, s_canvas_layer);
 
+  //Hands layer
+  s_hands_layer = layer_create(bounds);
+  layer_set_update_proc(s_hands_layer, hands_update_proc);
+  layer_add_child(window_layer, s_hands_layer);
+
+  //Battary layer
   GRect battery_frame;
   battery_frame.origin.x = bounds.size.w - 31;
   battery_frame.origin.y = 5;
   battery_frame.size.w = 25;
   battery_frame.size.h = 10;
-  s_battery_layer = layer_create(battery_frame);
-  if (!s_battery_layer) {
-      APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to create battery layer");
-      return;
-  }
-    
+
+  s_battery_layer = layer_create(battery_frame);    
   layer_set_update_proc(s_battery_layer, battery_update_proc);
   layer_add_child(window_layer, s_battery_layer);
 
+  // s_smile_animation_timer = app_timer_register(720, smiling_animation_timer_callback, NULL);
   layer_mark_dirty(s_canvas_layer);
-
-  // Start animation timer with error checking
-    s_animation_timer = app_timer_register(ANIMATION_INTERVAL, animation_timer_callback, NULL);
-    if (!s_animation_timer) {
-        // If timer creation fails, try again with longer interval
-        s_animation_timer = app_timer_register(ANIMATION_INTERVAL * 2, animation_timer_callback, NULL);
-    }
 }
 
 static void prv_window_unload(Window *window) {
   // Cancel the animation timer if it exists
-    if (s_animation_timer) {
-        app_timer_cancel(s_animation_timer);
-        s_animation_timer = NULL;
+    if (s_smile_animation_timer) {
+        app_timer_cancel(s_smile_animation_timer);
+        s_smile_animation_timer = NULL;
     }
 
   layer_destroy(s_canvas_layer);
+  layer_destroy(s_hands_layer);
+
   if (s_battery_layer) {
         layer_destroy(s_battery_layer);
         s_battery_layer = NULL;
@@ -180,7 +185,7 @@ static void prv_window_unload(Window *window) {
 }
 
 static void prv_init(void) {
-  s_animation_timer = NULL;
+  s_smile_animation_timer = NULL;
 
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers) {
@@ -200,10 +205,10 @@ static void prv_init(void) {
 
 static void prv_deinit(void) {
   // Cancel the animation timer if it exists
-    if (s_animation_timer) {
-        app_timer_cancel(s_animation_timer);
-        s_animation_timer = NULL;
-    }
+  if (s_smile_animation_timer) {
+      app_timer_cancel(s_smile_animation_timer);
+      s_smile_animation_timer = NULL;
+  }
 
   window_destroy(s_window);
 
