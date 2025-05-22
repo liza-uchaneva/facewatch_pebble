@@ -16,6 +16,9 @@
       "chalk",
       "diorite"
     ],
+    "capabilities":[
+      "health"
+    ],
     "watchapp": {
       "watchface": true
     },
