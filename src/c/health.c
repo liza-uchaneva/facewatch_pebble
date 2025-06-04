@@ -5,15 +5,18 @@ static HealthValue s_steps;
 static HealthValue s_average_steps;
 
 static void health_handler(HealthEventType event, void *context) {
-    s_steps = health_service_sum_today(HealthMetricStepCount);
-        APP_LOG(APP_LOG_LEVEL_INFO, "Current step count: %d steps", (int)s_steps);
-
-    s_average_steps = health_service_sum_averaged(HealthMetricStepCount, 
+    HealthValue cur_steps = health_service_sum_today(HealthMetricStepCount);
+    APP_LOG(APP_LOG_LEVEL_INFO, "Current step count: %d steps", (int)cur_steps);
+    if((int)cur_steps != (int)s_steps)
+    {
+      s_steps = cur_steps;
+      s_average_steps = health_service_sum_averaged(HealthMetricStepCount, 
                                                   time_start_of_today(), 
                                                   time(NULL), 
                                                   HealthServiceTimeScopeDaily);
     APP_LOG(APP_LOG_LEVEL_INFO, "Average step count: %d average steps", (int)s_average_steps);
     update_face_layer((int)s_steps, (int)s_average_steps);
+    }
 }
 
 void health_init() {

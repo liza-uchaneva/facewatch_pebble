@@ -79,7 +79,7 @@ static void hands_update_proc(Layer *layer, GContext *ctx)
 }
 
 // static void blink_animation_timer_callback(void *data) {
-//   if(!s_is_smile_animating && !s_is_blinking)
+//   if(!s_is_blinking)
 //   {
 //     s_is_blinking = true;
 //     psleep(10);
@@ -89,45 +89,6 @@ static void hands_update_proc(Layer *layer, GContext *ctx)
 //     s_is_blinking = false;
 //     s_blink_animation_timer = app_timer_register(10000, blink_animation_timer_callback, NULL);
 //   }
-//   layer_mark_dirty(s_canvas_layer);
-// }
-
-// static void smiling_animation_timer_callback(void *data) {
-//   if(s_is_smile_animating)
-//   {
-//     if(is_smile_increacing)
-//     {
-//       s_smile_phase += 0.05;
-//       APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase is increasing");
-//       if(s_smile_phase >= 1.0)
-//       {
-//         APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase on hold");
-//         psleep(10000);
-//         is_smile_increacing = false;
-//       }
-//         s_smile_animation_timer = app_timer_register(100, smiling_animation_timer_callback, NULL);
-//     }
-//     else{
-//       s_smile_phase -= 0.05;
-//       APP_LOG(APP_LOG_LEVEL_DEBUG,"smile_phase decreasing");
-//       if(s_smile_phase <= 0.0)
-//       {
-//         APP_LOG(APP_LOG_LEVEL_DEBUG,"smile is ended");
-//         s_is_smile_animating = false;
-//         is_smile_increacing = true;
-//         s_smile_phase = 0.0;
-//       }
-//       else{
-//       s_smile_animation_timer = app_timer_register(100, smiling_animation_timer_callback, NULL);
-//       }
-//     }
-//   }
-//   else{
-//     s_is_smile_animating = true;
-//     APP_LOG(APP_LOG_LEVEL_DEBUG,"smile is started");
-//     s_smile_animation_timer = app_timer_register(10, smiling_animation_timer_callback, NULL);
-//   }
-
 //   layer_mark_dirty(s_canvas_layer);
 // }
 
@@ -162,7 +123,6 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, s_battery_layer);
   
   // s_blink_animation_timer = app_timer_register(8000, blink_animation_timer_callback, NULL);
-  // s_smile_animation_timer = app_timer_register(10000, smiling_animation_timer_callback, NULL);
 
   layer_mark_dirty(s_canvas_layer);
 }
