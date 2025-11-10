@@ -6,7 +6,7 @@ static HealthValue s_average_steps;
 
 static void health_handler(HealthEventType event, void *context) {
     HealthValue cur_steps = health_service_sum_today(HealthMetricStepCount);
-    APP_LOG(APP_LOG_LEVEL_INFO, "Current step count: %d steps", (int)cur_steps);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Current step count: %d steps", (int)cur_steps);
     if((int)cur_steps != (int)s_steps)
     {
       s_steps = cur_steps;
@@ -14,13 +14,14 @@ static void health_handler(HealthEventType event, void *context) {
                                                   time_start_of_today(), 
                                                   time(NULL), 
                                                   HealthServiceTimeScopeDaily);
-    APP_LOG(APP_LOG_LEVEL_INFO, "Average step count: %d average steps", (int)s_average_steps);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Average step count: %d average steps", (int)s_average_steps);
     update_face_layer((int)s_steps, (int)s_average_steps);
     }
 }
 
 void health_init() {
   s_health_available = health_service_events_subscribe(health_handler, NULL);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Health is available!");
   if(!s_health_available) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "Health not available!");
   }

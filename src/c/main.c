@@ -6,6 +6,7 @@
 #include "c/consts.h"
 
 static Window *s_window;
+static Layer *s_eyes_layer;
 static Layer *s_canvas_layer;
 static Layer *s_hands_layer;
 static Layer *s_battery_layer;
@@ -70,6 +71,10 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   draw_face_layer(ctx, screencenter);
 }
 
+static void eyes_update_proc(Layer *layer, GContext *ctx) {
+  draw_eyes_layer(ctx, screencenter);
+}
+
 static void hands_update_proc(Layer *layer, GContext *ctx)
 {
   time_t temp = time(NULL);
@@ -78,19 +83,19 @@ static void hands_update_proc(Layer *layer, GContext *ctx)
   draw_hands_layer(ctx, screencenter, tick_time);
 }
 
-// static void blink_animation_timer_callback(void *data) {
-//   if(!s_is_blinking)
-//   {
-//     s_is_blinking = true;
-//     psleep(10);
-//     s_blink_animation_timer = app_timer_register(100, blink_animation_timer_callback, NULL);
-//   }
-//   else{
-//     s_is_blinking = false;
-//     s_blink_animation_timer = app_timer_register(10000, blink_animation_timer_callback, NULL);
-//   }
-//   layer_mark_dirty(s_canvas_layer);
-// }
+static void blink_animation_timer_callback(void *data) {
+  if(!s_is_blinking)
+  {
+    s_is_blinking = true;
+    psleep(10);
+    s_blink_animation_timer = app_timer_register(100, blink_animation_timer_callback, NULL);
+  }
+  else{
+    s_is_blinking = false;
+    s_blink_animation_timer = app_timer_register(10000, blink_animation_timer_callback, NULL);
+  }
+  layer_mark_dirty(s_eyes_layer);
+}
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(s_hands_layer);
@@ -105,6 +110,11 @@ static void prv_window_load(Window *window) {
   s_canvas_layer = layer_create(bounds);
   layer_set_update_proc(s_canvas_layer, canvas_update_proc);
   layer_add_child(window_layer, s_canvas_layer);
+
+  //Eyes layer
+  s_eyes_layer = layer_create(bounds);
+  layer_set_update_proc(s_eyes_layer, eyes_update_proc);
+  layer_add_child(window_layer, s_eyes_layer);
 
   //Hands layer
   s_hands_layer = layer_create(bounds);
@@ -122,14 +132,15 @@ static void prv_window_load(Window *window) {
   layer_set_update_proc(s_battery_layer, battery_update_proc);
   layer_add_child(window_layer, s_battery_layer);
   
-  // s_blink_animation_timer = app_timer_register(8000, blink_animation_timer_callback, NULL);
-
+  s_blink_animation_timer = app_timer_register(8000, blink_animation_timer_callback, NULL);
+  
   layer_mark_dirty(s_canvas_layer);
+  layer_mark_dirty(s_eyes_layer);
 }
   
 static void prv_window_unload(Window *window) {
-
   layer_destroy(s_canvas_layer);
+  layer_destroy(s_eyes_layer);
   layer_destroy(s_hands_layer);
 
   if (s_battery_layer) {

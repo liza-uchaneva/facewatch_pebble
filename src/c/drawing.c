@@ -10,15 +10,15 @@ bool s_is_smile_animating = false;
 bool s_is_sadness_animating = false;
 
 
-static void draw_hand(GContext *ctx, int length, float angle, GColor color) {
+static void draw_hand(GContext *ctx, int width, int length, float angle, GColor color) {
   GPoint start = get_point_on_circle(angle, 20, screencenter);
   GPoint end = get_point_on_circle(angle, length, screencenter);
 
-  graphics_context_set_stroke_width(ctx, 9);
+  graphics_context_set_stroke_width(ctx, width + 4);
   graphics_context_set_stroke_color(ctx, COLOR_DARK_GRAY);
   graphics_draw_line(ctx, start, end);
 
-  graphics_context_set_stroke_width(ctx, 5);
+  graphics_context_set_stroke_width(ctx, width);
   graphics_context_set_stroke_color(ctx, color);
   graphics_draw_line(ctx, start, end);
 }
@@ -39,6 +39,8 @@ static void draw_nose(GContext *ctx, int size) {
 static void draw_eye(GContext *ctx, int side) {
   int base_x = screencenter.x + side * (screencenter.x / 2 - 1);
   int base_y = screencenter.y - screencenter.y / 4 + 1;
+
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "base_x = %d", base_x);
 
   if(s_is_smile_animating)
   {
@@ -131,18 +133,24 @@ static void draw_mouth(GContext *ctx) {
   int start_angle = -230 - (int)(20 * s_smile_phase) + (int)(10 * s_sad_phase);
   int end_angle   = -130 + (int)(20 * s_smile_phase) - (int)(60 * s_sad_phase);
 
+  int mouth_x = screencenter.x - 24;
+  int mouth_y = screencenter.y - screencenter.y / 7 - (int)(2 * s_smile_phase);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "mouth_x = %d", mouth_x);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "mouth_y = %d", mouth_y);
   graphics_draw_arc(ctx, 
-                    GRect(screencenter.x - 24, 
-                          screencenter.y - 15 - (int)(2 * s_smile_phase), 50, 50),
+                    GRect(mouth_x, mouth_y, 50, 50),
                     GOvalScaleModeFitCircle, 
                     DEG_TO_TRIGANGLE(start_angle), 
                     DEG_TO_TRIGANGLE(end_angle));
 
   int top_start = -185 - 20 * s_sad_phase;
   int top_end = -170 - 25 * s_sad_phase;
+
+  int shadow_x = screencenter.x - 30;
+  int shadow_y = screencenter.y - screencenter.y / 6 - (int)(2 * s_smile_phase);
+
   graphics_draw_arc(ctx, 
-                    GRect(screencenter.x - 30, 
-                          screencenter.y - 18 - (int)(2 * s_smile_phase), 65, 65),
+                    GRect(shadow_x, shadow_y, 65, 65),
                     GOvalScaleModeFitCircle, 
                     DEG_TO_TRIGANGLE(top_start), 
                     DEG_TO_TRIGANGLE(top_end));
@@ -207,12 +215,12 @@ void draw_dark_circles(GContext *ctx, int side){
                     DEG_TO_TRIGANGLE(start_angle), DEG_TO_TRIGANGLE(end_angle));
 }
 
-void draw_face_layer(GContext *ctx, GPoint center){
-  screencenter = center;
-
+void draw_eyes_layer(GContext *ctx, GPoint center){
   draw_eye(ctx, -1);
   draw_eye(ctx, 1);
+}
 
+void draw_face_layer(GContext *ctx, GPoint center){
   draw_cheek(ctx, -1);
   draw_cheek(ctx, 1);
 
@@ -227,19 +235,18 @@ void draw_face_layer(GContext *ctx, GPoint center){
 
   draw_dark_circles(ctx, 1);
   draw_dark_circles(ctx, -1);
-
 }
 
 void draw_hands_layer(GContext *ctx, GPoint center, struct tm *tick_time)
 {
-  draw_hand(ctx, MINUTE_HAND_LENGTH, calculate_angle(tick_time->tm_min, 60), COLOR_CORAL);
-  draw_hand(ctx, HOUR_HAND_LENGTH, calculate_angle((tick_time->tm_hour % 12) * 50 + tick_time->tm_min * 50 / 60, 600), COLOR_YELLOW);
+  draw_hand(ctx, HAND_WIDTH, MINUTE_HAND_LENGTH, calculate_angle(tick_time->tm_min, 60), COLOR_CORAL);
+  draw_hand(ctx, HAND_WIDTH, HOUR_HAND_LENGTH, calculate_angle((tick_time->tm_hour % 12) * 50 + tick_time->tm_min * 50 / 60, 600), COLOR_YELLOW);
 }
 
 void update_face_layer(int steps, int average_steps) {
   if (average_steps <= 0) return;
-
   float ratio = (float)steps / (float)average_steps;
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "ratio = %d.%02d", (int)ratio, (int)(ratio * 100) % 100);
 
   // Clamp ratio to max 2.0 for sane upper bound
   if (ratio > 2.0f) ratio = 2.0f;
