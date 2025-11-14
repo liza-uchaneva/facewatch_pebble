@@ -23,7 +23,14 @@
 #define ANIMATION_DURATION 50
 #define ANIMATION_DELAY 100 
 
-#define COLOR_CORAL GColorFromHEX(0xFF3B1F)
-#define COLOR_YELLOW GColorFromHEX(0xFFA500)
-#define COLOR_FROSTED_BLUE GColorFromHEX(0x7CAAC8)
-#define COLOR_DARK_GRAY GColorFromHEX(0x2C2E33)
+#if defined(PBL_BW)
+  #define COLOR_CORAL        GColorFromHEX(0x555555) 
+  #define COLOR_YELLOW       GColorFromHEX(0xFFFFFF) 
+  #define COLOR_FROSTED_BLUE GColorFromHEX(0xCCCCCC)
+  #define COLOR_DARK_GRAY    GColorFromHEX(0x000000)
+#else
+  #define COLOR_CORAL GColorFromHEX(0xFF3B1F)
+  #define COLOR_YELLOW GColorFromHEX(0xFFA500)
+  #define COLOR_FROSTED_BLUE GColorFromHEX(0x7CAAC8)
+  #define COLOR_DARK_GRAY GColorFromHEX(0x2C2E33)
+#endif

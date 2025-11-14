@@ -1,7 +1,7 @@
-// #ifdef PBL_HEALTH
-// #include "c/health.h"
-// #endif
-#include "c/health.h"
+#ifdef PBL_HEALTH
+  #include "c/health.h"
+#endif
+
 #include "c/drawing.h"
 #include "c/consts.h"
 
@@ -150,7 +150,10 @@ static void prv_window_unload(Window *window) {
 }
 
 static void prv_init(void) {
-  health_init();
+  #if defined(PBL_HEALTH)
+    health_init();
+  #endif
+
   s_window = window_create();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .load = prv_window_load,
@@ -159,7 +162,7 @@ static void prv_init(void) {
 
   window_stack_push(s_window, true);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-  battery_state_service_subscribe(battery_callback);  // Use callback function
+  battery_state_service_subscribe(battery_callback);
     
   // Get initial battery state
   BatteryChargeState state = battery_state_service_peek();
@@ -172,7 +175,9 @@ static void prv_deinit(void) {
 
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
-  health_service_events_unsubscribe();
+  #if defined(PBL_HEALTH)
+    health_service_events_unsubscribe();
+  #endif
 }
 
 int main(void) {

@@ -55,7 +55,7 @@ static void draw_eye(GContext *ctx, int side) {
     if(s_is_sadness_animating)
     {
       graphics_context_set_fill_color(ctx, COLOR_DARK_GRAY);
-      graphics_fill_radial(ctx, GRect(base_x - 20, base_y - 20, 43, 43), 
+      graphics_fill_radial(ctx, GRect(base_x - 20, base_y - 15, 43, 43), 
       GOvalScaleModeFitCircle, 30, DEG_TO_TRIGANGLE(-90), DEG_TO_TRIGANGLE(90));
       return;
     }
@@ -86,7 +86,7 @@ static void draw_eye(GContext *ctx, int side) {
   if(s_sad_phase > 0.4 && s_is_sadness_animating)
   {
       graphics_context_set_fill_color(ctx, COLOR_DARK_GRAY);
-      graphics_fill_rect(ctx, GRect(base_x - 15, base_y - 20, 30, 10 - 8 * s_sad_phase), 15, GCornersTop);
+      graphics_fill_rect(ctx, GRect(base_x - 15, base_y - 18, 30, 15 - 8 * s_sad_phase), 15, GCornersTop);
   }
 }
 
@@ -120,7 +120,11 @@ static void draw_brow(GContext *ctx, int side) {
 
   GRect brow_rect = GRect(base_x, base_y, 45, 45);
   graphics_context_set_stroke_width(ctx, 10);
-  graphics_context_set_stroke_color(ctx, COLOR_YELLOW);
+  #if defined(PBL_BW)
+    graphics_context_set_stroke_color(ctx, COLOR_CORAL);
+  #else
+    graphics_context_set_stroke_color(ctx, COLOR_YELLOW);
+  #endif
   graphics_draw_arc(ctx, brow_rect, GOvalScaleModeFitCircle,
                     DEG_TO_TRIGANGLE(start_angle), DEG_TO_TRIGANGLE(end_angle));
 }
