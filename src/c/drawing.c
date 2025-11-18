@@ -86,7 +86,7 @@ static void draw_eye(GContext *ctx, int side) {
   if(s_sad_phase > 0.4 && s_is_sadness_animating)
   {
       graphics_context_set_fill_color(ctx, COLOR_DARK_GRAY);
-      graphics_fill_rect(ctx, GRect(base_x - 15, base_y - 18, 30, 15 - 8 * s_sad_phase), 15, GCornersTop);
+      graphics_fill_rect(ctx, GRect(base_x - 15, base_y - 18, 30, 8*s_sad_phase), 15, GCornersTop);
   }
 }
 
@@ -155,8 +155,7 @@ static void draw_mouth(GContext *ctx) {
 
   graphics_draw_arc(ctx, 
                     GRect(shadow_x, shadow_y, 65, 65),
-                    GOvalScaleModeFitCircle, 
-                    DEG_TO_TRIGANGLE(top_start), 
+                    GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(top_start), 
                     DEG_TO_TRIGANGLE(top_end));
 }
 
